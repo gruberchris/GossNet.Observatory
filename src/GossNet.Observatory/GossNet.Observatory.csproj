@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>GossNet.Observatory</RootNamespace>
+        <AssemblyName>gossnet-observatory</AssemblyName>
+        <!-- The TUI writes box-drawing characters and the node-state glyphs. -->
+        <InvariantGlobalization>true</InvariantGlobalization>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GossNet.Protocol" />
+        <PackageReference Include="Spectre.Console" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="GossNet.Observatory.Tests" />
+    </ItemGroup>
+
+</Project>

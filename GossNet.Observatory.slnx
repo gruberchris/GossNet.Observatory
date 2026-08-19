@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GossNet.Observatory/GossNet.Observatory.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GossNet.Observatory.Tests/GossNet.Observatory.Tests.csproj" />
+  </Folder>
+</Solution>
