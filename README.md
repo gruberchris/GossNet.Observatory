@@ -164,7 +164,3 @@ dotnet pack GossNet.Protocol/GossNet.Protocol.csproj -c Release \
 `NuGet.config` maps `GossNet.*` to that folder. Once the key is rotated and `main`
 publishes (GitVersion resolves it to **0.2.6**, not 0.2.0), change the one version line in
 `Directory.Packages.props` and drop the `local` source.
-
-## Licence
-
-MIT.
