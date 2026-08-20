@@ -190,24 +190,30 @@ relays, a killed node cuts the ring, and a partition holds.
 
 ## Building against GossNet.Protocol
 
-Restores `GossNet.Protocol` **0.3.0** from nuget.org — nothing local required:
+Restores `GossNet.Protocol` **0.8.0** from nuget.org — nothing local required:
 
 ```shell
 dotnet restore
 ```
 
-Note that 0.3.0 is the first release carrying the API this app is built on. There is no
-0.2.x on any feed: that work was numbered 0.2.0 while the library's publishing pipeline was
-broken, and it shipped as 0.3.0 once fixed. Anything older than 0.3.0 predates
+**0.3.0 is the minimum this app can build against.** Anything older predates
 `INodeDiscovery`, per-subscriber subscriptions, and the cancellable `IUdpClient` the
-instrumented transport depends on, so the app will not compile against it.
+instrumented transport depends on. (There is no 0.2.x on any feed at all: that work was
+numbered 0.2.0 while the library's publishing pipeline was broken, and shipped as 0.3.0 once
+fixed.)
+
+The Observatory deliberately uses only `NodeDiscovery.StaticList`, because hand-built
+neighbour lists are what let it shape mesh, ring, k-random and grid topologies — something no
+registry-backed provider can do. Everything the library has added since 0.3.0 (peer exchange,
+multicast, composite, the cloud and registry providers, watch support) is therefore unused
+here, and upgrading needs no code changes.
 
 To try the app against uncommitted library changes, pack the library locally and point a
 folder feed at it:
 
 ```shell
 dotnet pack GossNet.Protocol/GossNet.Protocol.csproj -c Release \
-  /p:Version=0.3.1-local.1 -o ../GossNet.Observatory/local-packages
+  /p:Version=0.9.0-local.1 -o ../GossNet.Observatory/local-packages
 ```
 
 then add that folder as a source and bump the version in `Directory.Packages.props`. With
