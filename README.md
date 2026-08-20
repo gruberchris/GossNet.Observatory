@@ -10,6 +10,12 @@ converge, and how many datagrams it burned getting there.
 It needs no changes to the library. `GossNetNode<T>` accepts an `IUdpClient`, so wrapping
 the stock transport is enough to see both directions of every wire.
 
+![A 9-node krandom cluster: messages injected and traced hop by hop, a node killed and
+routed around, then revived under continuous injection](docs/demo.gif)
+
+<sup>Recorded with [vhs](https://github.com/charmbracelet/vhs); regenerate with
+`vhs docs/demo.tape`.</sup>
+
 ## The thing it shows
 
 Same five nodes, same one message, two topologies:
@@ -163,11 +169,13 @@ queue in the OS buffer and drain when you revive it.
 Two details of the library shape that code, and are worth knowing if you write your own
 transport decorator:
 
-- **Never await inside `SendAsync`.** `GossNetNode.SocializeMessageAsync` holds a
-  semaphore across every neighbour send, so a delay there serializes the node's entire
-  fan-out — at 50ms and 20 neighbours, a one-second stall per message that looks exactly
-  like a library bug. Simulated latency is therefore handed to `DelayedSendScheduler` and
-  the call returns immediately.
+- **Never await inside `SendAsync`.** The node awaits its whole fan-out before a send —
+  or, on the receive path, a forward — counts as complete. (Before GossNet.Protocol
+  0.10.0 the sends were also serialized behind a semaphore; they are parallel now, but
+  still awaited.) A delay inside `SendAsync` would therefore stall every sender and the
+  node's processing loop for the full latency on each message, which looks exactly like
+  a library bug. Simulated latency is handed to `DelayedSendScheduler` instead, and the
+  call returns immediately.
 - **A dropped datagram must report success.** The node only counts a neighbour as notified
   when the send returns a positive length. Real UDP gives a sender no delivery signal, so
   simulated loss returns the datagram length and records the drop out of band. Reporting
