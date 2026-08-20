@@ -190,7 +190,7 @@ relays, a killed node cuts the ring, and a partition holds.
 
 ## Building against GossNet.Protocol
 
-Restores `GossNet.Protocol` **0.9.0** from nuget.org — nothing local required:
+Restores `GossNet.Protocol` **0.10.0** from nuget.org — nothing local required:
 
 ```shell
 dotnet restore
@@ -213,7 +213,7 @@ folder feed at it:
 
 ```shell
 dotnet pack GossNet.Protocol/GossNet.Protocol.csproj -c Release \
-  /p:Version=0.9.0-local.1 -o ../GossNet.Observatory/local-packages
+  /p:Version=0.10.0-local.1 -o ../GossNet.Observatory/local-packages
 ```
 
 then add that folder as a source and bump the version in `Directory.Packages.props`. With
