@@ -9,11 +9,13 @@ namespace GossNet.Observatory.Transport;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This exists because of how <c>GossNetNode.SocializeMessageAsync</c> works: it holds a
-/// <see cref="SemaphoreSlim"/> across every neighbour send, so awaiting a delay inside
-/// <see cref="IUdpClient.SendAsync"/> would serialize the node's whole fan-out. At 50 ms
-/// latency and 20 neighbours that is a one-second stall per message, which looks exactly
-/// like a library bug. The transport therefore returns immediately and the real socket
+/// This exists because of how <c>GossNetNode.SocializeMessageAsync</c> works: the node
+/// awaits its whole fan-out before a send — or, on the receive path, a forward — counts
+/// as complete. (Before GossNet.Protocol 0.10.0 the sends were also serialized behind a
+/// semaphore; they are parallel now, but still awaited.) Awaiting a simulated delay
+/// inside <see cref="IUdpClient.SendAsync"/> would therefore stall every sender and the
+/// node's processing loop for the full latency on each message, which looks exactly
+/// like a library bug. The transport instead returns immediately and the real socket
 /// write happens here.
 /// </para>
 /// <para>
