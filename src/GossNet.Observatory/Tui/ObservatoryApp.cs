@@ -43,8 +43,22 @@ internal sealed class ObservatoryApp(ClusterHarness harness, ClusterOptions opti
             {
                 while (!_view.Quit && !token.IsCancellationRequested)
                 {
-                    Render(layout);
-                    ctx.Refresh();
+                    // Console size is read fresh each frame, so resizing the terminal
+                    // reflows the view rather than requiring a restart.
+                    if (IsConsoleBigEnough())
+                    {
+                        try
+                        {
+                            Render(layout);
+                            ctx.Refresh();
+                        }
+                        catch (ArgumentOutOfRangeException)
+                        {
+                            // The window was resized between measuring and drawing, so
+                            // this frame's geometry is already stale. The next one will
+                            // be measured against the new size.
+                        }
+                    }
 
                     await Task.Delay(FrameInterval, token).ConfigureAwait(false);
                 }
@@ -81,7 +95,7 @@ internal sealed class ObservatoryApp(ClusterHarness harness, ClusterOptions opti
     {
         var profile = AnsiConsole.Profile;
 
-        if (profile.Width < MinimumWidth || profile.Height < MinimumHeight)
+        if (!IsConsoleBigEnough())
         {
             throw new InvalidOperationException(
                 $"The observatory needs a console of at least {MinimumWidth}x{MinimumHeight}; " +
@@ -90,20 +104,51 @@ internal sealed class ObservatoryApp(ClusterHarness harness, ClusterOptions opti
     }
 
     /// <summary>
+    /// Whether the console can currently hold the layout.
+    /// </summary>
+    /// <remarks>
+    /// Checked every frame, not just at startup: shrinking the window mid-run would
+    /// otherwise leave a region with negative height and take the app down. While the
+    /// window is too small the view simply holds its last frame and resumes on resize.
+    /// </remarks>
+    private static bool IsConsoleBigEnough() =>
+        AnsiConsole.Profile.Width >= MinimumWidth && AnsiConsole.Profile.Height >= MinimumHeight;
+
+    /// <summary>
+    /// Printable width inside the propagation panel: half the console, less the panel's
+    /// borders and padding.
+    /// </summary>
+    /// <remarks>
+    /// The floor is what <see cref="MinimumWidth"/> yields, since the view does not draw
+    /// at all below that. Nothing narrower ever reaches the summary composer.
+    /// </remarks>
+    private const int NarrowestPropagationWidth = (MinimumWidth / 2) - 4;
+
+    private static int PropagationWidth() =>
+        Math.Max(NarrowestPropagationWidth, (AnsiConsole.Profile.Width / 2) - 4);
+
+    /// <summary>
     /// Rows are proportional rather than fixed so the view adapts to the terminal.
     /// Fixed sizes totalling more than the console height leave a region with negative
     /// space, which the renderer cannot express.
     /// </summary>
+    /// <remarks>
+    /// The propagation tree gets the whole lower-left column. It is the one panel whose
+    /// content grows with the cluster — a deep tree needs a line per node — while the
+    /// histogram and the log are short and fixed, so they stack beside it rather than
+    /// stealing rows from it.
+    /// </remarks>
     private static Layout BuildLayout() =>
         new Layout("root").SplitRows(
             new Layout("header").Size(3),
             new Layout("top").Ratio(3).MinimumSize(5).SplitColumns(
                 new Layout("nodes"),
                 new Layout("stats")),
-            new Layout("tree").Ratio(4).MinimumSize(5),
-            new Layout("bottom").Ratio(3).MinimumSize(5).SplitColumns(
-                new Layout("histogram"),
-                new Layout("log")),
+            new Layout("main").Ratio(7).MinimumSize(10).SplitColumns(
+                new Layout("tree"),
+                new Layout("side").SplitRows(
+                    new Layout("histogram"),
+                    new Layout("log"))),
             new Layout("keys").Size(3));
 
     private void Render(Layout layout)
@@ -114,7 +159,7 @@ internal sealed class ObservatoryApp(ClusterHarness harness, ClusterOptions opti
         layout["header"].Update(HeaderPanel.Build(harness, options));
         layout["nodes"].Update(NodeGridPanel.Build(harness, _view, snapshot));
         layout["stats"].Update(StatsPanel.Build(harness, _view));
-        layout["tree"].Update(PropagationPanel.Build(harness, snapshot));
+        layout["tree"].Update(PropagationPanel.Build(harness, snapshot, PropagationWidth()));
         layout["histogram"].Update(HistogramPanel.Build(harness.Metrics));
         layout["log"].Update(EventLogPanel.Build(_view.Log));
         layout["keys"].Update(KeysPanel());

@@ -7,6 +7,3 @@ artifacts/
 *.user
 TestResults/
 bench-*.csv
-
-# Local folder feed, rebuilt with `dotnet pack` from the GossNet.Protocol checkout.
-local-packages/

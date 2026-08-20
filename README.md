@@ -58,6 +58,48 @@ dotnet run --project src/GossNet.Observatory -- --bench --nodes 5,10,25 --loss 0
 
 `--help` lists every option.
 
+### Topologies
+
+`--topology` decides who each node gossips with. It is the single biggest lever in the
+app: the protocol is identical in every case, only the neighbour lists differ. Each node's
+list becomes its `StaticNodes`, and every graph is symmetric — if A lists B, B lists A.
+
+| Value | Shape | Neighbours per node (at 25) |
+| --- | --- | --- |
+| `mesh` | every node knows every other node | 24 |
+| `ring` | each node knows only the node either side of it | 2 |
+| `krandom` | a ring, plus random shortcuts across it | 4–9, avg 6 |
+| `grid` | a square lattice, four-connected | 2–4, avg 3.2 |
+
+- **`mesh`** — one hop to everyone, and the O(N²) bill that comes with it. Every recipient
+  still forwards to every neighbour not already listed in `NotifiedNodes`, so a 25-node
+  cluster spends ~24 datagrams per node reached. Produces a completely flat tree.
+- **`ring`** — the cheapest graph that still connects everything: ~1 datagram per node
+  reached. The message crawls both ways around the circle, so the tree is a pair of long
+  chains and the diameter is N/2. Also the most fragile: one lost datagram severs an arm.
+- **`krandom`** — a ring backbone guarantees connectivity, then each node adds up to
+  `--degree` random chords (default 2) that cut the diameter to roughly log N. `--seed`
+  makes the wiring reproducible. The default topology to reach for when you want realistic
+  gossip behaviour.
+- **`grid`** — nodes laid out in a `ceil(sqrt(N))`-wide lattice linked right and down.
+  Propagation spreads as a visible wavefront, and the diameter is about 2·sqrt(N). Corner
+  and edge nodes have fewer links than interior ones, so it is the only built-in topology
+  with genuinely uneven connectivity.
+
+Measured at 25 nodes, 40 messages each — the trade-off is monotonic:
+
+| topology | datagrams per node reached | coverage at 10% loss |
+| --- | --: | --: |
+| `mesh` | 23.92 | 100% |
+| `krandom` | 5.25 | 100% |
+| `grid` | 2.33 | 99.5% |
+| `ring` | 1.08 | **62.7%** |
+
+`krandom` is the interesting row: full delivery under 10% loss for a fifth of a mesh's
+traffic. That is the property real gossip systems are built on — you do not need everyone
+to know everyone, you need enough redundant paths that losing some doesn't disconnect
+anyone.
+
 ### Keys
 
 | Key | Does |
@@ -148,19 +190,26 @@ relays, a killed node cuts the ring, and a partition holds.
 
 ## Building against GossNet.Protocol
 
-This repo consumes `GossNet.Protocol` as a NuGet package, but **0.2.x is not on a public
-feed yet**. The library's release workflow has been failing at the nuget.org push since
-2026-08-16 with an expired `NUGET_API_KEY`, so nuget.org still stops at 0.1.16 and the
-GitHub Packages push — which runs after it — never executed either. The 0.1.x API predates
-everything the Observatory uses.
+Restores `GossNet.Protocol` **0.3.0** from nuget.org — nothing local required:
 
-Until that is fixed, restore from a local folder feed. From a GossNet.Protocol checkout:
+```shell
+dotnet restore
+```
+
+Note that 0.3.0 is the first release carrying the API this app is built on. There is no
+0.2.x on any feed: that work was numbered 0.2.0 while the library's publishing pipeline was
+broken, and it shipped as 0.3.0 once fixed. Anything older than 0.3.0 predates
+`INodeDiscovery`, per-subscriber subscriptions, and the cancellable `IUdpClient` the
+instrumented transport depends on, so the app will not compile against it.
+
+To try the app against uncommitted library changes, pack the library locally and point a
+folder feed at it:
 
 ```shell
 dotnet pack GossNet.Protocol/GossNet.Protocol.csproj -c Release \
-  /p:Version=0.2.6-local.1 -o ../GossNet.Observatory/local-packages
+  /p:Version=0.3.1-local.1 -o ../GossNet.Observatory/local-packages
 ```
 
-`NuGet.config` maps `GossNet.*` to that folder. Once the key is rotated and `main`
-publishes (GitVersion resolves it to **0.2.6**, not 0.2.0), change the one version line in
-`Directory.Packages.props` and drop the `local` source.
+then add that folder as a source and bump the version in `Directory.Packages.props`. With
+more than one source configured, Central Package Management requires explicit
+`packageSourceMapping` entries or restore fails with NU1507.

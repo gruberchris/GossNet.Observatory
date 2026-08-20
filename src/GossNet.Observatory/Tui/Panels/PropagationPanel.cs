@@ -16,7 +16,13 @@ namespace GossNet.Observatory.Tui.Panels;
 internal static class PropagationPanel
 {
     /// <summary>Builds the propagation tree.</summary>
-    public static IRenderable Build(ClusterHarness harness, MessageSnapshot? snapshot)
+    /// <param name="harness">The cluster being observed.</param>
+    /// <param name="snapshot">The message to draw, or null when nothing is tracked yet.</param>
+    /// <param name="availableWidth">
+    /// Printable width inside the panel. Recomputed every frame from the live console
+    /// size, so the summary reflows as the terminal is resized.
+    /// </param>
+    public static IRenderable Build(ClusterHarness harness, MessageSnapshot? snapshot, int availableWidth)
     {
         if (snapshot is null)
         {
@@ -31,25 +37,53 @@ internal static class PropagationPanel
 
         AddChildren(tree, harness, snapshot, snapshot.OriginPort, depth: 0);
 
-        var reached = snapshot.NodesReached;
         var others = Math.Max(1, harness.AliveCount - 1);
-        var coverage = 100d * reached / others;
 
-        var coverageMarkup = reached >= others
-            ? $"[green]{coverage:0}%[/]"
-            : $"[yellow]{coverage:0}%[/]";
-
-        var header =
-            $"[bold]PROPAGATION[/]  [grey]#{snapshot.Seq}[/]  " +
-            $"reached [bold]{reached}[/]/{others} ({coverageMarkup})  " +
-            $"in [bold]{snapshot.Convergence.TotalMilliseconds:0.0}ms[/]  " +
-            $"cost [bold]{snapshot.DatagramsSent}[/] datagrams " +
-            $"([grey]amp {snapshot.Amplification:0.0}x, dup {snapshot.DuplicateRatio:0.0}x[/])";
-
-        return new Panel(tree)
-            .Header(header)
+        return new Panel(new Rows(
+                new Markup(ComposeSummary(snapshot, others, availableWidth)),
+                new Text(string.Empty),
+                tree))
+            .Header($"[bold]PROPAGATION[/] [grey]#{snapshot.Seq}[/]")
             .Border(BoxBorder.Rounded)
             .Expand();
+    }
+
+    /// <summary>
+    /// Renders the summary on one line when it fits, otherwise on two.
+    /// </summary>
+    /// <remarks>
+    /// The panel is half the console wide, so whether this fits depends entirely on the
+    /// terminal. Measuring rather than assuming means a wide window gets the compact
+    /// single line and a narrow one still reads correctly instead of wrapping mid-word.
+    /// Markup tags are excluded from the measurement — they occupy no columns.
+    /// </remarks>
+    /// <param name="snapshot">The message being described.</param>
+    /// <param name="others">Live nodes besides the origin, the denominator for coverage.</param>
+    /// <param name="availableWidth">Printable width inside the panel.</param>
+    internal static string ComposeSummary(MessageSnapshot snapshot, int others, int availableWidth)
+    {
+        var reached = snapshot.NodesReached;
+        var coverage = 100d * reached / others;
+        var milliseconds = snapshot.Convergence.TotalMilliseconds;
+
+        var plainStatus = $"reached {reached}/{others} ({coverage:0}%) in {milliseconds:0.0}ms";
+        var plainCost = $"{snapshot.DatagramsSent} datagrams · amp {snapshot.Amplification:0.0}x · dup {snapshot.DuplicateRatio:0.0}x";
+
+        var status =
+            $"reached [bold]{reached}[/]/{others} " +
+            $"([{(reached >= others ? "green" : "yellow")}]{coverage:0}%[/]) " +
+            $"in [bold]{milliseconds:0.0}ms[/]";
+
+        var cost =
+            $"[bold]{snapshot.DatagramsSent}[/] datagrams [grey]·[/] " +
+            $"amp [bold]{snapshot.Amplification:0.0}x[/] [grey]·[/] " +
+            $"dup [bold]{snapshot.DuplicateRatio:0.0}x[/]";
+
+        const string Separator = " · ";
+
+        return plainStatus.Length + Separator.Length + plainCost.Length <= availableWidth
+            ? $"{status} [grey]·[/] {cost}"
+            : $"{status}\n{cost}";
     }
 
     private static void AddChildren(IHasTreeNodes parent, ClusterHarness harness, MessageSnapshot snapshot, int port, int depth)

@@ -4,23 +4,8 @@
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     </PropertyGroup>
 
-    <!--
-      GossNet.Protocol 0.2.x is not on any public feed yet: the library's release
-      workflow has been failing at the nuget.org push since 2026-08-16 with an expired
-      NUGET_API_KEY, so nuget.org still stops at 0.1.16 and GitHub Packages never
-      received a 0.2.x push either.
-
-      Until that is fixed, this resolves from ./local-packages (see NuGet.config),
-      produced by:
-
-        dotnet pack GossNet.Protocol/GossNet.Protocol.csproj -c Release
-          /p:Version=0.2.6-local.1 -o ../GossNet.Observatory/local-packages
-
-      Once the key is rotated and main publishes, change this one line to the real
-      version and drop the local source from NuGet.config.
-    -->
     <ItemGroup>
-        <PackageVersion Include="GossNet.Protocol" Version="0.2.6-local.1" />
+        <PackageVersion Include="GossNet.Protocol" Version="0.3.0" />
     </ItemGroup>
 
     <ItemGroup>
