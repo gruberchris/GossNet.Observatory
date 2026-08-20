@@ -190,7 +190,7 @@ relays, a killed node cuts the ring, and a partition holds.
 
 ## Building against GossNet.Protocol
 
-Restores `GossNet.Protocol` **0.8.2** from nuget.org — nothing local required:
+Restores `GossNet.Protocol` **0.9.0** from nuget.org — nothing local required:
 
 ```shell
 dotnet restore
