@@ -1,20 +1,15 @@
 <Project>
-
-    <PropertyGroup>
-        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <PackageVersion Include="GossNet.Protocol" Version="0.10.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <!-- 0.57.2 is the newest stable; 0.57.3 exists only as alphas. -->
-        <PackageVersion Include="Spectre.Console" Version="0.57.2" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageVersion Include="MSTest" Version="4.3.3" />
-    </ItemGroup>
-
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="GossNet.Protocol" Version="0.10.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 0.57.2 is the newest stable; 0.57.3 exists only as alphas. -->
+    <PackageVersion Include="Spectre.Console" Version="0.57.3-alpha.0.57" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="MSTest" Version="4.3.3" />
+  </ItemGroup>
 </Project>
